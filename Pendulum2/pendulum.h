@@ -9,6 +9,7 @@
 #include <math.h>
 
 using namespace std;
+#define PENDULUM
 
 typedef unsigned int uint;
 const double TINY = 1.0e-20;
@@ -233,9 +234,9 @@ public:
 	double Fg[6];
 	double Tg = 0;
 	// Control
-	double des_vel, err_vel, err_vel_accum, err_vel_prev, T_control, T_control_vel, Kp_vel, Ki_vel, Kd_vel;
+	double des_vel = 0, err_vel = 0, err_vel_accum = 0, err_vel_prev = 0, T_control = 0, T_control_vel = 0, Kp_vel = 0, Ki_vel = 0, Kd_vel = 0;
 	// Residual
-	double r_hat, K, p, Ta, Td, yp;
+	double r_hat = 0, K = 0, p = 0, Ta = 0, Td = 0, yp = 0;
 };
 
 class Pendulum

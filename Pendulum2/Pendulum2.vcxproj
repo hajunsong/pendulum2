@@ -115,10 +115,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="dob.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pendulum.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="dob.h" />
     <ClInclude Include="pendulum.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
