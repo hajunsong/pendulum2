@@ -205,8 +205,9 @@ public:
 		u_vec[1] = 0;
 		u_vec[2] = 1;
 	};
+	~Body() {};
 	// base body information
-	double A0[9], C01[9], s01p[9];
+	double A0[9], C01[9], s01p[3];
 	// body initial data
 	double qi = 0, qi_dot = 0, mi = 0;
 	double ri[3], ri_dot[3], wi[3], rhoip[3], sijp[3], Jip[9], Cii[9], Cij[9];
