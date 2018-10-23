@@ -553,32 +553,32 @@ void DOB::residual_analysis() {
 			}
 			body[i].F[j + 3] += rict_drict_wi[j];
 		}
-		memset(body[i].Fg, 0, sizeof(double) * 6);
-		for (uint j = 0; j < 3; j++) {
-			body[i].Fg[j] = -body[i].Fic[j];
-			for (uint k = 0; k < 3; k++) {
-				body[i].Fg[j + 3] -= body[i].rict[j * 3 + k] * body[i].Fic[k];
-			}
-		}
-		double temp1[6] = { 0, };
-		for (uint j = 0; j < 6; j++) {
-			for (uint k = 0; k < 6; k++) {
-				temp1[j] += body[i].Ki[j * 6 + k] * D_temp[k];
-			}
-			body[i].T += body[i].Bi[j] * (body[i].F[j] - temp1[j]);
-		}
+		//memset(body[i].Fg, 0, sizeof(double) * 6);
+		//for (uint j = 0; j < 3; j++) {
+		//	body[i].Fg[j] = -body[i].Fic[j];
+		//	for (uint k = 0; k < 3; k++) {
+		//		body[i].Fg[j + 3] -= body[i].rict[j * 3 + k] * body[i].Fic[k];
+		//	}
+		//}
+		//double temp1[6] = { 0, };
+		//for (uint j = 0; j < 6; j++) {
+		//	for (uint k = 0; k < 6; k++) {
+		//		temp1[j] += body[i].Ki[j * 6 + k] * D_temp[k];
+		//	}
+		//	body[i].T += body[i].Bi[j] * (body[i].F[j] - temp1[j]);
+		//}
 
-		double temp[6] = { 0, };
-		for (uint j = 0; j < 6; j++) {
-			for (uint k = 0; k < 6; k++) {
-				temp[j] += body[i].Ki[j * 6 + k] * D_temp[k];
-			}
-			body[i].Tg += body[i].Bi[j] * (body[i].Fg[j] - temp[j]);
-		}
-		//body[i].Tg = 0;
-		//body[i].Ta = body[i].Tg;
+		//double temp[6] = { 0, };
+		//for (uint j = 0; j < 6; j++) {
+		//	for (uint k = 0; k < 6; k++) {
+		//		temp[j] += body[i].Ki[j * 6 + k] * D_temp[k];
+		//	}
+		//	body[i].Tg += body[i].Bi[j] * (body[i].Fg[j] - temp[j]);
+		//}
+		body[i].Tg = 0;
+		body[i].Ta = body[i].Tg;
 
-		body[i].yp = body[i].T - body[i].r_hat;
+		body[i].yp = body[i].Ta + body[i].T - body[i].r_hat;
 	}
 }
 
