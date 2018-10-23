@@ -225,6 +225,14 @@ void DOB::run(double *q, double *q_dot)
 		body[i].r_hat = body[i].K*(Y[2 * num_body + i] - body[i].p);
 	}
 
+	sprintf_s(file_name, "dob_result_body%d.txt", num_body);
+	fopen_s(&fp, file_name, "a+");
+	for (uint i = 0; i < num_body; i++) {
+		fprintf(fp, "%.10f\t", body[i].r_hat);
+	}
+	fprintf(fp, "\n");
+	fclose(fp);
+
 	memcpy(Yp_old, Yp, sizeof(double) * 3 * num_body);
 	memcpy(Y_old, Y, sizeof(double) * 3 * num_body);
 
@@ -449,6 +457,30 @@ void DOB::generalized_mass_force() {
 		memset(body[indx].Fic, 0, sizeof(double) * 3);
 		memset(body[indx].Tic, 0, sizeof(double) * 3);
 		body[indx].Fic[2] = body[indx].mi*g;
+		double mi_rict_drict_wi[3] = { 0, }, wit_Jic_wi[3] = { 0, };
+		for (uint i = 0; i < 3; i++) {
+			for (uint j = 0; j < 3; j++) {
+				double temp1[3] = { 0, }, temp2[3] = { 0, };
+				for (uint k = 0; k < 3; k++) {
+					for (uint m = 0; m < 3; m++) {
+						temp1[k] += body[indx].rict_dot[k * 3 + m] * body[indx].wi[m];
+						temp2[k] += body[indx].Jic[k * 3 + m] * body[indx].wi[m];
+					}
+				}
+				mi_rict_drict_wi[i] += mi_rict[i * 3 + j] * temp1[j];
+				wit_Jic_wi[i] += body[indx].wit[i * 3 + j] * temp2[j];
+			}
+		}
+		memset(body[indx].Qih, 0, sizeof(double) * 6);
+		for (uint i = 0; i < 3; i++) {
+			for (uint j = 0; j < 3; j++) {
+				body[indx].Qih[i] += body[indx].rict_dot[i * 3 + j] * body[indx].wi[j];
+				body[indx].Qih[i + 3] += body[indx].rict[i * 3 + j] * body[indx].Fic[j];
+			}
+			body[indx].Qih[i] *= body[indx].mi;
+			body[indx].Qih[i] += body[indx].Fic[i];
+			body[indx].Qih[i + 3] += (body[indx].Tic[i] + mi_rict_drict_wi[i] - wit_Jic_wi[i]);
+		}
 
 		// Velocity Coupling
 		tilde(body[indx].ri_dot, body[indx].rit_dot);
@@ -475,10 +507,17 @@ void DOB::generalized_mass_force() {
 	int sub_indx = num_body - 1;
 	for (int indx = sub_indx; indx >= 0; indx--) {
 		memcpy(body[indx].Ki, body[indx].Mih, sizeof(double) * 36);
-		//        memcpy(body[indx].Li, body[indx].Qih, sizeof(double)*6);
+		memcpy(body[indx].Li, body[indx].Qih, sizeof(double) * 6);
 		if (indx != sub_indx) {
 			for (uint i = 0; i < 36; i++) {
 				body[indx].Ki[i] += body[indx + 1].Ki[i];
+			}
+			for (uint i = 0; i < 6; i++) {
+				double temp = 0;
+				for (uint j = 0; j < 6; j++) {
+					temp += body[indx + 1].Ki[i * 6 + j] * body[indx + 1].Di[j];
+				}
+				body[indx].Li[i] += (body[indx + 1].Li[i] - temp);
 			}
 		}
 	}
@@ -492,6 +531,28 @@ void DOB::residual_analysis() {
 				D_temp[k] += body[j].Di[k];
 			}
 		}
+		double drict_wi[3] = { 0, };
+		for (uint j = 0; j < 3; j++) {
+			for (uint k = 0; k < 3; k++) {
+				drict_wi[j] += body[i].rict_dot[j * 3 + k] * body[i].wi[k];
+			}
+			drict_wi[j] *= body[i].mi;
+		}
+		double rict_drict_wi[3] = { 0, };
+		for (uint j = 0; j < 3; j++) {
+			for (uint k = 0; k < 3; k++) {
+				rict_drict_wi[j] += body[i].rict[j * 3 + k] * drict_wi[k];
+			}
+			rict_drict_wi[j] *= body[i].mi;
+		}
+		memset(body[i].F, 0, sizeof(double) * 6);
+		for (uint j = 0; j < 3; j++) {
+			body[i].F[j] = -body[i].Fic[j] + drict_wi[j];
+			for (uint k = 0; k < 3; k++) {
+				body[i].F[j + 3] += body[i].rict[j * 3 + k] * body[i].Fic[k];
+			}
+			body[i].F[j + 3] += rict_drict_wi[j];
+		}
 		memset(body[i].Fg, 0, sizeof(double) * 6);
 		for (uint j = 0; j < 3; j++) {
 			body[i].Fg[j] = -body[i].Fic[j];
@@ -499,6 +560,14 @@ void DOB::residual_analysis() {
 				body[i].Fg[j + 3] -= body[i].rict[j * 3 + k] * body[i].Fic[k];
 			}
 		}
+		double temp1[6] = { 0, };
+		for (uint j = 0; j < 6; j++) {
+			for (uint k = 0; k < 6; k++) {
+				temp1[j] += body[i].Ki[j * 6 + k] * D_temp[k];
+			}
+			body[i].T += body[i].Bi[j] * (body[i].F[j] - temp1[j]);
+		}
+
 		double temp[6] = { 0, };
 		for (uint j = 0; j < 6; j++) {
 			for (uint k = 0; k < 6; k++) {
@@ -506,10 +575,10 @@ void DOB::residual_analysis() {
 			}
 			body[i].Tg += body[i].Bi[j] * (body[i].Fg[j] - temp[j]);
 		}
-		//        body[i].Tg = 0;
+		//body[i].Tg = 0;
+		//body[i].Ta = body[i].Tg;
 
-		body[i].Ta = /*body[i].T_control + */body[i].Tg;
-		body[i].yp = body[i].Ta - body[i].Tg - body[i].r_hat;
+		body[i].yp = body[i].T - body[i].r_hat;
 	}
 }
 

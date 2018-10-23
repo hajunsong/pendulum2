@@ -50,8 +50,8 @@ public:
     // Acceleration
     double qi_ddot;
     // Gravity force
-    double Fg[6];
-    double Tg;
+    double Fg[6], F[6];
+    double Tg, T;
     // Control
     double des_vel, err_vel, err_vel_accum, err_vel_prev, T_control, T_control_vel, Kp_vel, Ki_vel, Kd_vel;
     // Residual
@@ -69,6 +69,7 @@ inline Body::Body(){
     mi = 0;
 
     Tg = 0;
+	T = 0;
 
     des_vel = 0;
     err_vel = 0;
@@ -112,6 +113,9 @@ private:
         void generalized_mass_force();
         void residual_analysis();
         void dqddq2Yp();
+
+	FILE *fp;
+	char file_name[256];
 };
 
 #endif // DOB_H

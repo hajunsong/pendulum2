@@ -231,8 +231,8 @@ public:
 	// Generalized Force(Torque)
 	double Q = 0;
 	// Gravity force
-	double Fg[6];
-	double Tg = 0;
+	double Fg[6], F[6];
+	double Tg = 0, T;
 	// Control
 	double des_vel = 0, err_vel = 0, err_vel_accum = 0, err_vel_prev = 0, T_control = 0, T_control_vel = 0, Kp_vel = 0, Ki_vel = 0, Kd_vel = 0;
 	// Residual
