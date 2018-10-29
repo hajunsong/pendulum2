@@ -185,7 +185,7 @@ DOB::~DOB() {
 	delete[] Yp_old;
 }
 
-void DOB::run(double *q, double *q_dot)
+void DOB::run(double *q, double *q_dot, double *tau)
 {
 	t_current = start_time;
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -197,32 +197,31 @@ void DOB::run(double *q, double *q_dot)
 	start = clock();
 #endif
 	if (num_body == 1) {
-		Y[0] = *q;
-		Y[1] = *q_dot;
-		Y[2] = 0;
+		Y[0] = 0;
 	}
 	else {
 		double *Y_ptr = Y;
-		for (uint i = 0; i < num_body; i++) {
-			*(Y_ptr++) = q[i];
-		}
-		for (uint i = 0; i < num_body; i++) {
-			*(Y_ptr++) = q_dot[i];
-		}
 		for (uint i = 0; i < num_body; i++) {
 			*(Y_ptr++) = 0;
 		}
 	}
 
+	for (uint i = 0; i < num_body; i++) {
+		body[i].qi = q[i];
+	}
+	for (uint i = 0; i < num_body; i++) {
+		body[i].qi_dot = q_dot[i];
+	}
+
 	analysis();
 
-	for (uint i = 0; i < 3 * num_body; i++) {
+	for (uint i = 0; i < num_body; i++) {
 		Y[i] = Y_old[i] + Yp_old[i] * h + 0.5*h*(Yp[i] - Yp_old[i]);
 	}
 
 	for (uint i = 0; i < num_body; i++) {
-		body[i].p = 0.5*body[i].qi_dot*body[i].qi_dot*(body[i].Jic[0] * body[i].wi[0] * body[i].wi[0] + body[i].Jic[4] * body[i].wi[1] * body[i].wi[1] + body[i].Jic[8] * body[i].wi[2] * body[i].wi[2]);
-		body[i].r_hat = body[i].K*(Y[2 * num_body + i] - body[i].p);
+		body[i].p = 0.5*pow(body[i].qi_dot, 2)*(body[i].Jic[0] * pow(body[i].wi[0], 2) + body[i].Jic[4] * pow(body[i].wi[1], 2) + body[i].Jic[8] * (body[i].wi[2], 2));
+		body[i].r_hat = body[i].K*(Y[i] - body[i].p);
 	}
 
 	sprintf_s(file_name, "dob_result_body%d.txt", num_body);
@@ -233,8 +232,8 @@ void DOB::run(double *q, double *q_dot)
 	fprintf(fp, "\n");
 	fclose(fp);
 
-	memcpy(Yp_old, Yp, sizeof(double) * 3 * num_body);
-	memcpy(Y_old, Y, sizeof(double) * 3 * num_body);
+	memcpy(Yp_old, Yp, sizeof(double) * num_body);
+	memcpy(Y_old, Y, sizeof(double) * num_body);
 
 	t_current += h;
 
@@ -247,7 +246,7 @@ void DOB::run(double *q, double *q_dot)
 
 	printf("Time : %.7f[s]", t_current);
 	for (uint i = 0; i < num_body; i++) {
-		printf("P%d : %.10f[rad] ", i, body[i].qi);
+		printf("P%d : %.10f[rad] ", i, q[i]);
 	}
 	for (uint i = 0; i < num_body; i++) {
 		printf("R : %.5f[Nm] ", body[i].r_hat);
@@ -257,10 +256,10 @@ void DOB::run(double *q, double *q_dot)
 	}
 #endif
 
-std::cout.setf(std::ios_base::fixed, std::ios_base::floatfield);
-std::cout.precision(7);
-cout << endl;
-cout << "Total Processing Time : " << total_time << " ms" << endl;
+//std::cout.setf(std::ios_base::fixed, std::ios_base::floatfield);
+//std::cout.precision(7);
+//cout << endl;
+//cout << "Total Processing Time : " << total_time << " ms" << endl;
 #if !defined(_WIN32) && !defined(_WIN64)
 average_time = total_time / ((end_time - start_time) / h);
 cout << "Average Processing Time : " << average_time << " ms" << endl;
@@ -268,24 +267,12 @@ cout << "Average Processing Time : " << average_time << " ms" << endl;
 }
 
 void DOB::analysis() {
-	Y2qdq();
 
 	kinematics_analysis();
 	generalized_mass_force();
 	residual_analysis();
 
 	dqddq2Yp();
-}
-
-void DOB::Y2qdq()
-{
-	double *Y_ptr = Y;
-	for (uint i = 0; i < num_body; i++) {
-		body[i].qi = *(Y_ptr++);
-	}
-	for (uint i = 0; i < num_body; i++) {
-		body[i].qi_dot = *(Y_ptr++);
-	}
 }
 
 void DOB::kinematics_analysis() {
@@ -457,6 +444,7 @@ void DOB::generalized_mass_force() {
 		memset(body[indx].Fic, 0, sizeof(double) * 3);
 		memset(body[indx].Tic, 0, sizeof(double) * 3);
 		body[indx].Fic[2] = body[indx].mi*g;
+
 		double mi_rict_drict_wi[3] = { 0, }, wit_Jic_wi[3] = { 0, };
 		for (uint i = 0; i < 3; i++) {
 			for (uint j = 0; j < 3; j++) {
@@ -545,40 +533,104 @@ void DOB::residual_analysis() {
 			}
 			rict_drict_wi[j] *= body[i].mi;
 		}
-		memset(body[i].F, 0, sizeof(double) * 6);
-		for (uint j = 0; j < 3; j++) {
-			body[i].F[j] = -body[i].Fic[j] + drict_wi[j];
-			for (uint k = 0; k < 3; k++) {
-				body[i].F[j + 3] += body[i].rict[j * 3 + k] * body[i].Fic[k];
-			}
-			body[i].F[j + 3] += rict_drict_wi[j];
-		}
-		//memset(body[i].Fg, 0, sizeof(double) * 6);
+		//memset(body[i].F, 0, sizeof(double) * 6);
 		//for (uint j = 0; j < 3; j++) {
-		//	body[i].Fg[j] = -body[i].Fic[j];
+		//	body[i].F[j] = body[i].Fic[j] + drict_wi[j];
 		//	for (uint k = 0; k < 3; k++) {
-		//		body[i].Fg[j + 3] -= body[i].rict[j * 3 + k] * body[i].Fic[k];
+		//		body[i].F[j + 3] += body[i].rict[j * 3 + k] * body[i].Fic[k];
 		//	}
+		//	body[i].F[j + 3] += rict_drict_wi[j];
 		//}
 		//double temp1[6] = { 0, };
+		//body[i].T = 0;
 		//for (uint j = 0; j < 6; j++) {
 		//	for (uint k = 0; k < 6; k++) {
 		//		temp1[j] += body[i].Ki[j * 6 + k] * D_temp[k];
 		//	}
 		//	body[i].T += body[i].Bi[j] * (body[i].F[j] - temp1[j]);
 		//}
+		memset(body[i].Fg, 0, sizeof(double) * 6);
+		for (uint j = 0; j < 3; j++) {
+			body[i].Fg[j] = -body[i].Fic[j];
+			for (uint k = 0; k < 3; k++) {
+				body[i].Fg[j + 3] -= body[i].rict[j * 3 + k] * body[i].Fic[k];
+			}
+		}
 
-		//double temp[6] = { 0, };
-		//for (uint j = 0; j < 6; j++) {
-		//	for (uint k = 0; k < 6; k++) {
-		//		temp[j] += body[i].Ki[j * 6 + k] * D_temp[k];
-		//	}
-		//	body[i].Tg += body[i].Bi[j] * (body[i].Fg[j] - temp[j]);
-		//}
-		body[i].Tg = 0;
-		body[i].Ta = body[i].Tg;
+		double temp[6] = { 0, };
+		for (uint j = 0; j < 6; j++) {
+			for (uint k = 0; k < 6; k++) {
+				temp[j] += body[i].Ki[j * 6 + k] * D_temp[k];
+			}
+			body[i].Tg += body[i].Bi[j] * (body[i].Fg[j] - temp[j]);
+		}
+		double *M = new double[num_body*num_body];
+		double *Q = new double[num_body];
+		memset(M, 0, sizeof(double)*num_body*num_body);
+		memset(Q, 0, sizeof(double)*num_body);
+		for (uint i = 0; i < num_body; i++) {
+			for (uint j = 0; j < num_body; j++) {
+				if (i == j) {
+					double temp[6] = { 0, };
+					for (uint m = 0; m < 6; m++) {
+						for (uint n = 0; n < 6; n++) {
+							temp[m] += body[i].Ki[m * 6 + n] * body[i].Bi[n];
+						}
+					}
+					for (uint k = 0; k < 6; k++) {
+						M[i*num_body + j] += body[i].Bi[k] * temp[k];
+					}
+				}
+				else if (i < j) {
+					double temp[6] = { 0, };
+					for (uint m = 0; m < 6; m++) {
+						for (uint n = 0; n < 6; n++) {
+							temp[m] += body[j].Ki[m * 6 + n] * body[j].Bi[n];
+						}
+					}
+					for (uint k = 0; k < 6; k++) {
+						M[i*num_body + j] += body[i].Bi[k] * temp[k];
+					}
+				}
+				else if (i > j) {
+					double temp[6] = { 0, };
+					for (uint m = 0; m < 6; m++) {
+						for (uint n = 0; n < 6; n++) {
+							temp[m] += body[i].Ki[m * 6 + n] * body[j].Bi[n];
+						}
+					}
+					for (uint k = 0; k < 6; k++) {
+						M[i*num_body + j] += body[i].Bi[k] * temp[k];
+					}
+				}
+			}
+			double D_temp[6] = { 0, };
+			for (uint j = 0; j <= i; j++) {
+				for (uint k = 0; k < 6; k++) {
+					D_temp[k] += body[j].Di[k];
+				}
+			}
+			memset(body[i].Fg, 0, sizeof(double) * 6);
+			for (uint j = 0; j < 3; j++) {
+				body[i].Fg[j] = -body[i].Fic[j];
+				for (uint k = 0; k < 3; k++) {
+					body[i].Fg[j + 3] -= body[i].rict[j * 3 + k] * body[i].Fic[k];
+				}
+			}
+			body[i].Tg = 0;
+			double temp1[6] = { 0, };
+			for (uint j = 0; j < 6; j++) {
+				for (uint k = 0; k < 6; k++) {
+					temp1[j] += body[i].Ki[j * 6 + k] * D_temp[k];
+				}
+				body[i].Tg += body[i].Bi[j] * (body[i].Fg[j] - temp1[j]);
+				Q[i] += body[i].Bi[j] * (body[i].Li[j] - temp1[j]);
+			}
+		}
+		//body[i].Tg = 0;
+		body[i].Ta = 5;
 
-		body[i].yp = body[i].Ta + body[i].T - body[i].r_hat;
+		body[i].yp = body[i].Ta - body[i].Tg - body[i].r_hat;
 	}
 }
 

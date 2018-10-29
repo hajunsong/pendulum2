@@ -14,9 +14,7 @@
 #include <math.h>
 using namespace std;
 
-#ifndef PENDULUM
 typedef unsigned int uint;
-const double TINY = 1.0e-20;
 inline void tilde(double *a, double *b) {
     *(b++) = 0;	*(b++) = -a[2];	*(b++) = a[1];
     *(b++) = a[2];	*(b++) = 0;	*(b++) = -a[0];
@@ -56,6 +54,8 @@ public:
     double des_vel, err_vel, err_vel_accum, err_vel_prev, T_control, T_control_vel, Kp_vel, Ki_vel, Kd_vel;
     // Residual
     double r_hat, K, p, Ta, Td, yp;
+
+	double tau;
 };
 
 inline Body::Body(){
@@ -87,17 +87,18 @@ inline Body::Body(){
 	Ta = 0;
 	Td = 0;
 	yp = 0;
+
+	tau = 0;
 }
 
 inline Body::~Body(){}
-#endif
 
 class DOB
 {
 public:
     DOB(uint num_body);
     ~DOB();
-    void run(double *q, double *q_dot);
+    void run(double *q, double *q_dot, double *tau);
     double total_time, average_time;
 private:
     uint num_body;
@@ -108,7 +109,6 @@ private:
     double *Y, *Yp, *Y_old, *Yp_old;
 
     void analysis();
-        void Y2qdq();
         void kinematics_analysis();
         void generalized_mass_force();
         void residual_analysis();

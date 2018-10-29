@@ -178,9 +178,6 @@ Pendulum::Pendulum(uint numbody) {
 		for (uint i = 0; i < num_body; i++) {
 			*(Y_ptr++) = body[i].qi_dot;
 		}
-		//for (uint i = 0; i < num_body; i++) {
-		//	*(Y_ptr++) = 0;
-		//}
 	}
 
 	integr = new Integrator(h, 2*num_body);
@@ -202,17 +199,22 @@ void Pendulum::run() {
 
 	while (t_current <= end_time) {
 		analysis();
-		double *q = new double[num_body], *q_dot = new double[num_body];
+		double *q = new double[num_body], *q_dot = new double[num_body], *tau = new double[num_body];
 		for (uint i = 0; i < num_body; i++) {
 			q[i] = body[i].qi;
 			q_dot[i] = body[i].qi_dot;
+			tau[i] = 0;
 		}
-		dob->run(q, q_dot);
+		dob->run(q, q_dot, tau);
 		save_data();
 		integr->absh3(Y, Yp, t_current);
 		printf("Time : %.3f[s]\n", t_current);
 		memcpy(Y, integr->Y_next, sizeof(double)*num_body*2);
 		t_current = integr->t_next;
+
+		delete[] q;
+		delete[] q_dot;
+		delete[] tau;
 	}
 
 	delete dob;
@@ -410,11 +412,7 @@ void Pendulum::GeneralizedMassForce() {
 		memset(body[indx].Fic, 0, sizeof(double)*3);
 		memset(body[indx].Tic, 0, sizeof(double)*3);
 		body[indx].Fic[2] = body[indx].mi*g;
-// 		for (uint i = 0; i < 3; i++) {
-// 			for (uint j = 0; j < 3; j++) {
-// 				body[indx].Tic[i] -= body[i].rict[i * 3 + j] * body[i].Fic[j];
-// 			}
-// 		}
+
 		double mi_rict_drict_wi[3] = { 0, }, wit_Jic_wi[3] = { 0, };
 		for (uint i = 0; i < 3; i++) {
 			for (uint j = 0; j < 3; j++) {
@@ -536,6 +534,7 @@ void Pendulum::dynamics_analysis() {
 			}
 		}
 		double temp1[6] = { 0, };
+		body[i].Tg = 0;
 		for (uint j = 0; j < 6; j++) {
 			for (uint k = 0; k < 6; k++) {
 				temp1[j] += body[i].Ki[j * 6 + k] * D_temp[k];
