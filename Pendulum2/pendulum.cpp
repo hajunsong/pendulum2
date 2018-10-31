@@ -203,7 +203,7 @@ void Pendulum::run() {
 		for (uint i = 0; i < num_body; i++) {
 			q[i] = body[i].qi;
 			q_dot[i] = body[i].qi_dot;
-			tau[i] = 0;
+			tau[i] = -body[i].Tg;
 		}
 		dob->run(q, q_dot, tau);
 		save_data();
@@ -412,7 +412,6 @@ void Pendulum::GeneralizedMassForce() {
 		memset(body[indx].Fic, 0, sizeof(double)*3);
 		memset(body[indx].Tic, 0, sizeof(double)*3);
 		body[indx].Fic[2] = body[indx].mi*g;
-
 		double mi_rict_drict_wi[3] = { 0, }, wit_Jic_wi[3] = { 0, };
 		for (uint i = 0; i < 3; i++) {
 			for (uint j = 0; j < 3; j++) {
@@ -427,7 +426,9 @@ void Pendulum::GeneralizedMassForce() {
 				wit_Jic_wi[i] += body[indx].wit[i * 3 + j] * temp2[j];
 			}
 		}
-		memset(body[indx].Qih, 0, sizeof(double)*6);
+		memset(body[indx].Qih, 0, sizeof(double) * 6);
+		memset(body[indx].Qih_g, 0, sizeof(double) * 6);
+		memset(body[indx].Qih_c, 0, sizeof(double) * 6);
 		for (uint i = 0; i < 3; i++) {
 			for (uint j = 0; j < 3; j++) {
 				body[indx].Qih[i] += body[indx].rict_dot[i * 3 + j] * body[indx].wi[j];
@@ -436,6 +437,15 @@ void Pendulum::GeneralizedMassForce() {
 			body[indx].Qih[i] *= body[indx].mi;
 			body[indx].Qih[i] += body[indx].Fic[i];
 			body[indx].Qih[i + 3] += (body[indx].Tic[i] + mi_rict_drict_wi[i] - wit_Jic_wi[i]);
+		}
+		for (uint i = 0; i < 3; i++) {
+			for (uint j = 0; j < 3; j++) {
+				body[indx].Qih_g[i + 3] += body[indx].rict[i * 3 + j] * body[indx].Fic[j];
+				body[indx].Qih_c[i] += body[indx].rict_dot[i * 3 + j] * body[indx].wi[j];
+			}
+			body[indx].Qih_c[i] *= body[indx].mi;
+			body[indx].Qih_g[i] = body[indx].Fic[i];
+			body[indx].Qih_c[i + 3] += (mi_rict_drict_wi[i] - wit_Jic_wi[i]);
 		}
 		// Velocity Coupling
 		tilde(body[indx].ri_dot, body[indx].rit_dot);
@@ -462,6 +472,8 @@ void Pendulum::GeneralizedMassForce() {
 	for (int indx = num_body - 1; indx >= 0; indx--) {
 		memcpy(body[indx].Ki, body[indx].Mih, sizeof(double)*36);
 		memcpy(body[indx].Li, body[indx].Qih, sizeof(double)*6);
+		memcpy(body[indx].Li_g, body[indx].Qih_g, sizeof(double)*6);
+		memcpy(body[indx].Li_c, body[indx].Qih_c, sizeof(double)*6);
 		if (indx != num_body - 1) {
 			for (uint i = 0; i < 36; i++) {
 				body[indx].Ki[i] += body[indx + 1].Ki[i];
@@ -472,6 +484,8 @@ void Pendulum::GeneralizedMassForce() {
 					temp += body[indx + 1].Ki[i * 6 + j] * body[indx + 1].Di[j];
 				}
 				body[indx].Li[i] += (body[indx + 1].Li[i] - temp);
+				body[indx].Li_g[i] += (body[indx + 1].Li_g[i] - temp);
+				body[indx].Li_c[i] += (body[indx + 1].Li_c[i] - temp);
 			}
 		}
 	}
@@ -526,22 +540,19 @@ void Pendulum::dynamics_analysis() {
 				D_temp[k] += body[j].Di[k];
 			}
 		}
-		memset(body[i].Fg, 0, sizeof(double) * 6);
-		for (uint j = 0; j < 3; j++) {
-			body[i].Fg[j] = -body[i].Fic[j];
-			for (uint k = 0; k < 3; k++) {
-				body[i].Fg[j + 3] -= body[i].rict[j * 3 + k] * body[i].Fic[k];
-			}
-		}
+		
 		double temp1[6] = { 0, };
 		body[i].Tg = 0;
+		body[i].Tc = 0;
 		for (uint j = 0; j < 6; j++) {
 			for (uint k = 0; k < 6; k++) {
 				temp1[j] += body[i].Ki[j * 6 + k] * D_temp[k];
 			}
-			body[i].Tg += body[i].Bi[j] * (body[i].Fg[j] - temp1[j]);
 			Q[i] += body[i].Bi[j] * (body[i].Li[j] - temp1[j]);
+			body[i].Tg += body[i].Bi[j] * (body[i].Li_g[j] - temp1[j]);
+			body[i].Tc += body[i].Bi[j] * (body[i].Li_c[j] - temp1[j]);
 		}
+		Q[i] += -body[i].Tg;
 	}
 
 	double *dYh = new double[num_body];

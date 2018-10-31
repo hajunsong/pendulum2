@@ -40,21 +40,18 @@ public:
     // Cartesian velocity state
     double Ti[36], wit[9], Yib[6], ric_dot[3];
     // Mass & Force
-    double Jic[9], rict[9], rict_dot[9], Mih[36], Fic[3], Tic[3], Qih[6];
+    double Jic[9], rict[9], rict_dot[9], Mih[36], Fic[3], Tic[3], Qih[6], Qih_g[6], Qih_c[6];
     // Velocity Coupling
     double rit_dot[9], dHi[3], Di[6];
     // System EQM
-    double Ki[36], Li[6];
+    double Ki[36], Li[6], Li_g[6], Li_c[6];
     // Acceleration
     double qi_ddot;
-    // Gravity force
-    double Fg[6], F[6];
-    double Tg, T;
     // Control
     double des_vel, err_vel, err_vel_accum, err_vel_prev, T_control, T_control_vel, Kp_vel, Ki_vel, Kd_vel;
     // Residual
+	double Tg, Tc, alpha;
     double r_hat, K, p, Ta, Td, yp;
-
 	double tau;
 };
 
@@ -69,7 +66,7 @@ inline Body::Body(){
     mi = 0;
 
     Tg = 0;
-	T = 0;
+	Tc = 0;
 
     des_vel = 0;
     err_vel = 0;
@@ -112,7 +109,6 @@ private:
         void kinematics_analysis();
         void generalized_mass_force();
         void residual_analysis();
-        void dqddq2Yp();
 
 	FILE *fp;
 	char file_name[256];

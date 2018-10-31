@@ -2,7 +2,7 @@
 #include "pendulum.h"
 
 int main() {
-	uint num_body = 1;
+	uint num_body = 3;
 	//for (uint num_body = 1; num_body <= 6; num_body++) {
 		Pendulum *pendulum = new Pendulum(num_body);
 		pendulum->run();

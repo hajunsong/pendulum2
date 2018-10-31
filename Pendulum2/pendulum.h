@@ -49,24 +49,18 @@ private:
 		// Cartesian velocity state
 		double Ti[36], wit[9], Yib[6], ric_dot[3];
 		// Mass & Force
-		double Jic[9], rict[9], rict_dot[9], Mih[36], Fic[3], Tic[3], Qih[6];
+		double Jic[9], rict[9], rict_dot[9], Mih[36], Fic[3], Tic[3], Qih[6], Qih_g[6], Qih_c[6];
 		// Velocity Coupling
 		double rit_dot[9], dHi[3], Di[6];
 		// System EQM
-		double Ki[36], Li[6];
+		double Ki[36], Li[6], Li_g[6], Li_c[6];
 		// Acceleration
 		double qi_ddot;
-		// Generalized Force(Torque)
-		double Q = 0;
-		// Gravity force
-		double Fg[6], F[6];
-		double Tg = 0, T;
 		// Control
 		double des_vel = 0, err_vel = 0, err_vel_accum = 0, err_vel_prev = 0, T_control = 0, T_control_vel = 0, Kp_vel = 0, Ki_vel = 0, Kd_vel = 0;
 		// Residual
 		double r_hat = 0, K = 0, p = 0, Ta = 0, Td = 0, yp = 0;
-
-		double tau = 0;
+		double Tg, Tc;
 	};
 
 	class Integrator {
