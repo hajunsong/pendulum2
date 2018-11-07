@@ -1,7 +1,6 @@
 #ifndef DOB_H
 #define DOB_H
 
-#include <time.h>
 #if !defined(_WIN32) && !defined(_WIN64)
 #include <QElapsedTimer>
 #else
