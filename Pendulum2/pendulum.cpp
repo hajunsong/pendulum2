@@ -556,7 +556,7 @@ void Pendulum::dynamics_analysis() {
 			body[i].Tg += body[i].Bi[j] * (body[i].Li_g[j] - temp1[j]);
 			body[i].Tc += body[i].Bi[j] * (body[i].Li_c[j] - temp1[j]);
 		}
-		Q[i] += -body[i].Tg;
+		//Q[i] += -body[i].Tg;
 	}
 
 	double *dYh = new double[num_body];
