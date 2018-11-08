@@ -36,7 +36,7 @@ private:
 		};
 		~Body() {};
 		// base body information
-		double A0[9], C01[9], s01p[3];
+		double A0[9], C01[9], s01p[3], J0p[9], r0[3];
 		// body initial data
 		double qi = 0, qi_dot = 0, mi = 0;
 		double ri[3], ri_dot[3], wi[3], rhoip[3], sijp[3], Jip[9], Cii[9], Cij[9];
