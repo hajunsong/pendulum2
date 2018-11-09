@@ -24,9 +24,9 @@ class Body
 {
 public:
     Body();
-    ~Body();
-    // base body information
-    double A0[9], C01[9], s01p[3];
+	~Body();
+	// base body information
+	double A0[9], C01[9], s01p[3], J0p[9], r0[3];
     // body initial data
     double qi, qi_dot, mi;
     double ri[3], ri_dot[3], wi[3], rhoip[3], sijp[3], Jip[9], Cii[9], Cij[9];
